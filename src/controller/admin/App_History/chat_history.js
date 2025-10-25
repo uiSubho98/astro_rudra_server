@@ -221,8 +221,8 @@ export const getChatRoomHistoryByDateRange = asyncHandler(async (req, res) => {
 
         // Format and return the data
         return {
-          astrologerName: chatRoom.astrologer.name, // Astrologer name
-          userName: chatRoom.user.name, // User name
+          astrologerName: chatRoom.astrologer?.name, // Astrologer name
+          userName: chatRoom?.user?.name || "User", // User name
           chatDuration: durationInMinutes, // Chat Duration in minutes
           startedTime: startedTime, // Started Time (formatted)
           endedTime: endedTime, // Ended Time (formatted)
