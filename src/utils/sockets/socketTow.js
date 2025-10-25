@@ -921,7 +921,7 @@ export const setupSocketIO = (server) => {
           });
 
           // Check if astrologer is in an active or ringing call
-          const activeCall = await Calls.findOne({
+          const activeCall = await Call.findOne({
             astrologerId: astrologerId,
             status: { $in: ["ringing", "ongoing"] },
           });
