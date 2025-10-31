@@ -429,6 +429,15 @@ export const setupSocketIO = (server) => {
         return;
       }
       try {
+        const isChatEnded = await ChatRoom.findById(data.chatRoomId);
+        if (
+          isChatEnded.status === "ended" ||
+          isChatEnded.status === "rejected"
+        ) {
+          const { chatRoomId, user, astrologer } = isChatEnded;
+          await handleEndChat(io, chatRoomId, user, astrologer, "user");
+          return;
+        }
         const result = await handleChatMessage(data, io);
         if (result.error) {
           socket.emit("error", { message: result.error });

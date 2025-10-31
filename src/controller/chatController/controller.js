@@ -788,7 +788,6 @@ const processMessage = async (data, io) => {
         }
       }
     } else if (recipientType === "astrologer") {
-      
       // If recipientType is "astrologer", find the astrologer by ID
       recipient = await Astrologer.findById(resolvedRecipientId);
     } else {
@@ -796,7 +795,6 @@ const processMessage = async (data, io) => {
     }
 
     if (recipient?.socketId) {
-      
       console.log("sending message to recipient socketId:", recipient.socketId);
       io.to(recipient.socketId).emit("received-message", {
         ...newMessage,
@@ -817,7 +815,6 @@ export async function handleEndChat(
   roomId,
   userId,
   astrologerId,
-
   sender
 ) {
   try {
@@ -977,7 +974,7 @@ export const checkChatRoomStatus = async (io) => {
     };
     if (user?.socketId) {
       io.to(user.socketId).emit("chatRoomStatusUpdate", response);
-    } 
+    }
 
     // console.log({ response });
     // Emit chatRoomStatusUpdate event to users involved in chatRooms
