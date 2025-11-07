@@ -20,7 +20,7 @@ const userSchema = new mongoose.Schema(
     photo: { type: String },
     playerId: { type: String, default: null },
     isOnApp: { type: Boolean, default: false },
-    Free_Chat_Available: { type: Boolean, default: true },
+    Free_Chat_Available: { type: Boolean, default: false },
     followed_astrologers: [
       { type: mongoose.Schema.Types.ObjectId, ref: "Astrologer", default: [] },
     ],
