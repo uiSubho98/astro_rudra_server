@@ -148,6 +148,7 @@ export const getChatRoom_History = asyncHandler(async (req, res) => {
 export const getChatRoomHistoryByDateRange = asyncHandler(async (req, res) => {
   try {
     const { newFromDate, newToDate } = req.body;
+    
     // Validate the date formats
     if (
       !/^\d{2}-\d{2}-\d{4}$/.test(newFromDate) ||
@@ -159,25 +160,37 @@ export const getChatRoomHistoryByDateRange = asyncHandler(async (req, res) => {
       });
     }
 
-    // Convert the input dates (dd-mm-yyyy) to JavaScript Date objects
+    // Convert the input dates (dd-mm-yyyy) to JavaScript Date objects in UTC
     const [fromDay, fromMonth, fromYear] = newFromDate.split("-");
     const [toDay, toMonth, toYear] = newToDate.split("-");
 
-    const fromDate = new Date(
-      `${fromYear}-${fromMonth}-${fromDay}T00:00:00.000Z`
-    ); // Start of the 'from' date
-    const toDate = new Date(`${toYear}-${toMonth}-${toDay}T23:59:59.999Z`); // End of the 'to' date
+    // Create dates in UTC timezone to match MongoDB storage
+    const fromDate = new Date(Date.UTC(fromYear, fromMonth - 1, fromDay, 0, 0, 0, 0));
+    const toDate = new Date(Date.UTC(toYear, toMonth - 1, toDay, 23, 59, 59, 999));
+
+    console.log('Searching for dates between:', {
+      fromDate: fromDate.toISOString(),
+      toDate: toDate.toISOString(),
+      dbDate: "2025-11-12T06:59:20.219Z" // Your actual DB date for reference
+    });
 
     // Fetch chat rooms created between the 'from' and 'to' dates
     const chatRooms = await ChatRoom.find({
       createdAt: {
-        $gte: fromDate, // Greater than or equal to the start of the 'from' date
-        $lte: toDate, // Less than or equal to the end of the 'to' date
+        $gte: fromDate,
+        $lte: toDate,
       },
     })
-      .populate("user") // Populate user field
-      .populate("astrologer") // Populate astrologer field
-      .lean(); // Convert to plain JavaScript objects
+      .populate("user")
+      .populate("astrologer")
+      .lean();
+
+    console.log(`Found ${chatRooms.length} chat rooms`);
+
+    // If no chat rooms found, return empty array
+    if (chatRooms.length === 0) {
+      return res.status(200).json([]);
+    }
 
     // Map through each chat room to gather the necessary details
     const chatHistory = await Promise.all(
@@ -198,7 +211,7 @@ export const getChatRoomHistoryByDateRange = asyncHandler(async (req, res) => {
           const durationInMilliseconds = endTime - startTime;
 
           // Convert milliseconds to minutes
-          durationInMinutes = Math.ceil(durationInMilliseconds / 60000); // Round up to the nearest minute
+          durationInMinutes = Math.ceil(durationInMilliseconds / 60000);
 
           // If duration is less than 1 minute, treat it as 1 minute
           if (durationInMinutes < 1) {
@@ -211,23 +224,19 @@ export const getChatRoomHistoryByDateRange = asyncHandler(async (req, res) => {
             durationInMinutes * chatRoom.astrologer.chatCommission;
         }
 
-        // Format start and end time to show only the time portion (HH:mm:ss)
-        const startedTime = chatRoom.createdAt.toLocaleTimeString("en-US", {
-          hour12: false,
-        });
-        const endedTime = chatRoom.updatedAt.toLocaleTimeString("en-US", {
-          hour12: false,
-        });
+        // Convert UTC times to IST for display
+        const startedTime = convertUTCtoIST(chatRoom.createdAt);
+        const endedTime = convertUTCtoIST(chatRoom.updatedAt);
 
         // Format and return the data
         return {
-          astrologerName: chatRoom.astrologer?.name, // Astrologer name
-          userName: chatRoom?.user?.name || "User", // User name
-          chatDuration: durationInMinutes, // Chat Duration in minutes
-          startedTime: startedTime, // Started Time (formatted)
-          endedTime: endedTime, // Ended Time (formatted)
-          chatRoomId: chatRoom.chatRoomId, // Chat Room ID
-          totalAmount: totalAmount, // Total Amount after commission
+          astrologerName: chatRoom.astrologer?.name,
+          userName: chatRoom?.user?.name || "User",
+          chatDuration: durationInMinutes,
+          startedTime: startedTime,
+          endedTime: endedTime,
+          chatRoomId: chatRoom.chatRoomId,
+          totalAmount: totalAmount,
         };
       })
     );
@@ -240,6 +249,16 @@ export const getChatRoomHistoryByDateRange = asyncHandler(async (req, res) => {
     return res.status(500).json({ message: "Internal Server Error" });
   }
 });
+
+// Add UTC to IST conversion function
+const convertUTCtoIST = (utcDate) => {
+  return utcDate.toLocaleTimeString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    hour12: true,
+    hour: 'numeric',
+    minute: '2-digit'
+  });
+};
 
 export const getChat_History = asyncHandler(async (req, res) => {
   try {
