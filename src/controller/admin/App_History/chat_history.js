@@ -170,8 +170,7 @@ export const getChatRoomHistoryByDateRange = asyncHandler(async (req, res) => {
 
     console.log('Searching for dates between:', {
       fromDate: fromDate.toISOString(),
-      toDate: toDate.toISOString(),
-      dbDate: "2025-11-12T06:59:20.219Z" // Your actual DB date for reference
+      toDate: toDate.toISOString()
     });
 
     // Fetch chat rooms created between the 'from' and 'to' dates
@@ -195,14 +194,25 @@ export const getChatRoomHistoryByDateRange = asyncHandler(async (req, res) => {
     // Map through each chat room to gather the necessary details
     const chatHistory = await Promise.all(
       chatRooms.map(async (chatRoom) => {
-        // Get the chat document based on chatRoomId
-        const chat = await Chat.findOne({ chatRoomId: chatRoom.chatRoomId });
+        console.log(`Looking for Chat with chatRoomId: ${chatRoom._id}`);
+        
+        // Defensive check for missing user or astrologer (same as working controller)
+        if (!chatRoom.user || !chatRoom.astrologer) {
+          console.warn(
+            `Missing user or astrologer in chatRoom ID: ${chatRoom._id}`
+          );
+          return null; // Skip this entry
+        }
+
+        // FIX: Use chatRoom._id instead of chatRoom.chatRoomId
+        const chat = await Chat.findOne({ chatRoomId: chatRoom._id });
 
         // Calculate total amount based on astrologer's price per minute and commission
         let totalAmount = 0;
         let durationInMinutes = 0;
 
         if (chat) {
+          console.log('Chat found, calculating duration...');
           // Calculate the duration in minutes
           const startTime = chat.createdAt;
           const endTime = chat.updatedAt;
@@ -219,36 +229,51 @@ export const getChatRoomHistoryByDateRange = asyncHandler(async (req, res) => {
           }
 
           // Calculate total amount by astrologer's price and commission
-          totalAmount =
-            durationInMinutes * chatRoom.astrologer.pricePerChatMinute -
-            durationInMinutes * chatRoom.astrologer.chatCommission;
+          if (chatRoom.astrologer && chatRoom.astrologer.pricePerChatMinute) {
+            totalAmount =
+              durationInMinutes * chatRoom.astrologer.pricePerChatMinute -
+              durationInMinutes * (chatRoom.astrologer.chatCommission || 0);
+          }
+        } else {
+          console.log('No Chat document found for this chat room');
         }
 
         // Convert UTC times to IST for display
         const startedTime = convertUTCtoIST(chatRoom.createdAt);
         const endedTime = convertUTCtoIST(chatRoom.updatedAt);
 
-        // Format and return the data
+        // Format and return the data - ADD THE MISSING FIELDS
         return {
           astrologerName: chatRoom.astrologer?.name,
           userName: chatRoom?.user?.name || "User",
           chatDuration: durationInMinutes,
           startedTime: startedTime,
           endedTime: endedTime,
-          chatRoomId: chatRoom.chatRoomId,
+          chatRoomId: chatRoom._id,
           totalAmount: totalAmount,
+          // ADD THESE MISSING FIELDS:
+          status: chatRoom.status || "",
+          rejectedBy: chatRoom.rejectedBy || "",
+          endedBy: chatRoom.endedBy || "",
         };
       })
     );
 
+    // Remove nulls (in case of missing user/astrologer) - same as working controller
+    const filteredHistory = chatHistory.filter((entry) => entry !== null);
+
     // Return the chat history data as a JSON response
-    return res.status(200).json(chatHistory);
+    return res.status(200).json(filteredHistory);
   } catch (error) {
     // Error handling
     console.error("Error fetching chat history by date range:", error);
     return res.status(500).json({ message: "Internal Server Error" });
   }
 });
+
+// UTC to IST conversion function
+
+
 
 // Add UTC to IST conversion function
 const convertUTCtoIST = (utcDate) => {

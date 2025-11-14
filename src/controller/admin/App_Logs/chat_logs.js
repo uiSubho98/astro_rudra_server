@@ -45,20 +45,17 @@ export const getChatRoomsByFilter = asyncHandler(async (req, res) => {
       .populate("astrologer", "name phone email")
       .sort({ createdAt: -1 });
 
-    // If no records found
-    if (!chatRooms.length) {
-      return res
-        .status(404)
-        .json(
-          new ApiResponse(404, [], "No chat rooms found for given filters.")
-        );
-    }
-
-    // Return successful response
+    // ✅ FIX: Return 200 with empty array instead of 404
     return res
       .status(200)
       .json(
-        new ApiResponse(200, chatRooms, "Chat rooms fetched successfully.")
+        new ApiResponse(
+          200, 
+          chatRooms, 
+          chatRooms.length 
+            ? "Chat rooms fetched successfully." 
+            : "No chat rooms found for given filters."
+        )
       );
   } catch (error) {
     console.error("Error fetching chat rooms:", error);
@@ -97,13 +94,12 @@ export const getCallsByFilter = asyncHandler(async (req, res) => {
     // ✅ Define valid statuses
     const validStatuses = ["ringing", "rejected", "ongoing", "ended"];
 
-    // 🧠 FIX: Check after normalization
-    // if (status && !validStatuses.includes(status)) {
-    //   console.log("Status received:", status); // debug log
-    //   return res
-    //     .status(400)
-    //     .json(new ApiResponse(400, null, "Invalid status value."));
-    // }
+    // Validate status if provided
+    if (status && !validStatuses.includes(status)) {
+      return res
+        .status(400)
+        .json(new ApiResponse(400, null, "Invalid status value."));
+    }
 
     // ✅ Build query
     const query = {
@@ -117,17 +113,18 @@ export const getCallsByFilter = asyncHandler(async (req, res) => {
       .populate("astrologerId", "name phone email")
       .sort({ createdAt: -1 });
 
-    if (!calls.length) {
-      return res
-        .status(404)
-        .json(
-          new ApiResponse(404, [], "No calls found for the given filters.")
-        );
-    }
-
+    // ✅ FIX: Return 200 with empty array instead of 404
     return res
       .status(200)
-      .json(new ApiResponse(200, calls, "Calls fetched successfully."));
+      .json(
+        new ApiResponse(
+          200, 
+          calls, 
+          calls.length 
+            ? "Calls fetched successfully." 
+            : "No calls found for the given filters."
+        )
+      );
   } catch (error) {
     console.error("Error fetching calls:", error);
     return res

@@ -252,6 +252,7 @@ export const userLogout = asyncHandler(async (req, res) => {
   }
 });
 
+
 export const changePassword = async (req, res) => {
   try {
     const { userId } = req.params; // assuming the astrologer's ID is passed as a route parameter
